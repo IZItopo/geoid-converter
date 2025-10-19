@@ -18,7 +18,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY . .
 RUN mkdir -p uploads grids
 
+# Définir explicitement le port
+ENV PORT=8080
 EXPOSE 8080
 
-# Port fixe 8080
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:8080", "--workers", "2", "--timeout", "120"]
+# Utiliser directement 8080 (pas de variable)
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:8080", "--workers", "2", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-"]
