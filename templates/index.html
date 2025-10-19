@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convertisseur de Coordonnées GNSS RTK</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌍 Convertisseur de Coordonnées GNSS RTK</h1>
+            <p>Conversion précise entre systèmes de référence avec support géoïde</p>
+        </div>
+
+        <div class="content">
+            
+            <!-- Étape 1: Import du fichier -->
+            <div class="step" id="step1">
+                <div class="step-header">
+                    <div class="step-number">1</div>
+                    <div class="step-title">Importer le fichier CSV</div>
+                </div>
+                
+                <div class="file-upload" id="fileUploadZone">
+                    <div class="file-upload-icon">📁</div>
+                    <div class="file-upload-text">Glissez-déposez votre fichier CSV ici</div>
+                    <div class="file-upload-hint">ou cliquez pour parcourir (CSV, TXT)</div>
+                    <input type="file" id="fileInput" accept=".csv,.txt" style="display: none;">
+                    <button class="btn-browse" onclick="document.getElementById('fileInput').click()">
+                        Parcourir
+                    </button>
+                </div>
+
+                <div class="preview-box" id="filePreview">
+                    <div class="preview-title">📊 Aperçu du fichier (5 premières lignes)</div>
+                    <div class="preview-content" id="previewContent"></div>
+                    <div id="fileInfo" style="margin-top: 15px;"></div>
+                </div>
+
+                <div class="format-selector" id="formatSelector" style="display: none;">
+                    <div class="preview-title">Format des coordonnées</div>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" id="formatLatLong" name="coordFormat" value="lat_long_h" checked>
+                            <label for="formatLatLong">Matricule, Latitude, Longitude, h</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" id="formatLongLat" name="coordFormat" value="long_lat_h">
+                            <label for="formatLongLat">Matricule, Longitude, Latitude, h</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" id="formatXYZ" name="coordFormat" value="x_y_z">
+                            <label for="formatXYZ">Matricule, X, Y, Z (coordonnées projetées)</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Étape 2: Système source -->
+            <div class="step" id="step2" style="display: none;">
+                <div class="step-header">
+                    <div class="step-number">2</div>
+                    <div class="step-title">Système de coordonnées source</div>
+                </div>
+                
+                <!-- Info détection -->
+                <div id="detectionInfoSource"></div>
+                
+                <!-- Sélecteur de région -->
+                <div class="region-selector">
+                    <label class="region-label">Région / Pays :</label>
+                    <select class="select-box" id="regionSource">
+                        <option value="">-- Sélectionner une région --</option>
+                    </select>
+                </div>
+                
+                <!-- 🆕 BOUTON DÉTECTION INTELLIGENTE -->
+                <div id="autoDetectContainer" style="display: none; margin: 20px 0;">
+                    <button class="btn-auto-detect" id="btnAutoDetect">
+                        🔍 Détection automatique des systèmes compatibles
+                    </button>
+                    <div class="info-badge" style="margin-top: 10px;">
+                        💡 Laissez l'application tester automatiquement tous les systèmes de la région pour trouver ceux compatibles avec vos coordonnées
+                    </div>
+                </div>
+                
+                <!-- Menu déroulant EPSG -->
+                <div class="region-selector">
+                    <label class="region-label">Système de coordonnées :</label>
+                    <select class="select-box" id="sourceEpsg">
+                        <option value="">-- Sélectionner d'abord une région --</option>
+                    </select>
+                </div>
+                
+                <!-- Bouton de validation (visible seulement si coords projetées) -->
+                <div id="validateSourceContainer" style="display: none;">
+                    <button class="validate-button" id="btnValidateSource">
+                        ✔ Valider le système source
+                    </button>
+                </div>
+                
+                <div id="regionInfoSource"></div>
+            </div>
+
+            <!-- Étape 3: Système cible -->
+            <div class="step" id="step3" style="display: none;">
+                <div class="step-header">
+                    <div class="step-number">3</div>
+                    <div class="step-title">Système de coordonnées cible</div>
+                </div>
+                
+                <!-- Suggestions AVANT -->
+                <div id="suggestionInfoTarget"></div>
+                
+                <!-- Info détection -->
+                <div id="detectionInfoTarget"></div>
+                
+                <!-- Sélecteur de région -->
+                <div class="region-selector">
+                    <label class="region-label">Région / Pays :</label>
+                    <select class="select-box" id="regionTarget">
+                        <option value="">-- Sélectionner une région --</option>
+                    </select>
+                </div>
+                
+                <!-- Menu déroulant EPSG -->
+                <div class="region-selector">
+                    <label class="region-label">Système de coordonnées :</label>
+                    <select class="select-box" id="targetEpsg">
+                        <option value="">-- Sélectionner d'abord une région --</option>
+                    </select>
+                </div>
+                
+                <div id="regionInfoTarget"></div>
+            </div>
+
+            <!-- Étape 4: Géoïde -->
+            <div class="step" id="step4" style="display: none;">
+                <div class="step-header">
+                    <div class="step-number">4</div>
+                    <div class="step-title">Modèle de géoïde (conversion h → H)</div>
+                </div>
+                
+                <select class="select-box" id="geoidSelect">
+                    {% for code, name in geoid_list.items() %}
+                        <option value="{{ code }}">{{ name }}</option>
+                    {% endfor %}
+                </select>
+                
+                <div id="geoidInfo"></div>
+            </div>
+
+            <!-- Étape 5: Conversion -->
+            <div class="step" id="step5" style="display: none;">
+                <div class="step-header">
+                    <div class="step-number">5</div>
+                    <div class="step-title">Lancer la conversion</div>
+                </div>
+                
+                <button class="btn-convert" id="btnConvert">
+                    🚀 Convertir les coordonnées
+                </button>
+                
+                <div class="progress-bar" id="progressBar" style="display: none;">
+                    <div class="progress-fill"></div>
+                </div>
+            </div>
+
+            <!-- Résultats -->
+            <div class="step" id="stepResults" style="display: none;">
+                <div class="step-header">
+                    <div class="step-number">✔</div>
+                    <div class="step-title">Résultats</div>
+                </div>
+                
+                <div class="preview-box show">
+                    <div class="preview-title">📊 Aperçu des coordonnées converties (5 premières lignes)</div>
+                    <div class="preview-content" id="resultsPreview"></div>
+                </div>
+                
+                <button class="btn-export" id="btnExport">
+                    📥 Télécharger le CSV complet
+                </button>
+                
+                <button class="btn-reset" id="btnReset">
+                    🔄 Nouvelle conversion
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Stocker la base EPSG en JavaScript -->
+    <script>
+        window.EPSG_DATABASE = {{ epsg_database | tojson }};
+    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
