@@ -409,8 +409,17 @@ def validate_epsg_compatibility(source_epsg, target_epsg, lat, lon):
     }
 
 
+# 🆕 ROUTE PAGE DE PRÉSENTATION
 @app.route('/')
+def landing():
+    """Page de présentation TCract"""
+    return render_template('landing.html')
+
+
+# Route principale du convertisseur
+@app.route('/converter')
 def index():
+    """Page du convertisseur de coordonnées"""
     return render_template('index.html', epsg_database=EPSG_DATABASE, geoid_list=GEOID_LIST)
 
 
@@ -568,10 +577,10 @@ def test_region_systems():
                         else:
                             print(f"   ❌ EPSG:{epsg_code} - Hors limites")
                     else:
-                        print(f"   ⚠️  EPSG:{epsg_code} - Pas de zone définie")
+                        print(f"   ⚠️ EPSG:{epsg_code} - Pas de zone définie")
                         
                 except Exception as e:
-                    print(f"   ⚠️  EPSG:{epsg_code} - Erreur: {e}")
+                    print(f"   ⚠️ EPSG:{epsg_code} - Erreur: {e}")
                     continue
         
         print(f"✅ Test terminé : {len(compatible_systems)}/{total_systems} systèmes compatibles")
@@ -628,8 +637,8 @@ def reverse_transform():
         if area_of_use:
             west, south, east, north = area_of_use.west, area_of_use.south, area_of_use.east, area_of_use.north
             
-            print(f"📍 Limites EPSG:{source_epsg}: {south}°N à {north}°N, {west}°E à {east}°E")
-            print(f"📍 Position calculée: {lat}°N, {lon}°E")
+            print(f"🔍 Limites EPSG:{source_epsg}: {south}°N à {north}°N, {west}°E à {east}°E")
+            print(f"🔍 Position calculée: {lat}°N, {lon}°E")
             
             # Vérifier si la position est dans les limites (avec une petite marge de tolérance)
             tolerance = 0.1
@@ -947,7 +956,7 @@ def export_results():
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("🚀 Convertisseur de Coordonnées GNSS RTK")
+    print("🚀 Convertisseur de Coordonnées GNSS RTK - TCract")
     print("=" * 60)
     print("✅ Application démarrée avec succès!")
     
@@ -957,7 +966,8 @@ if __name__ == '__main__':
     
     if debug:
         print(f"🌐 Mode DÉVELOPPEMENT")
-        print(f"🌐 Ouvrez votre navigateur sur: http://localhost:{port}")
+        print(f"🌐 Page de présentation: http://localhost:{port}")
+        print(f"🌐 Convertisseur: http://localhost:{port}/converter")
     else:
         print(f"🌐 Mode PRODUCTION")
         print(f"🌐 Port: {port}")

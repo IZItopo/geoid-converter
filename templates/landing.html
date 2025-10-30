@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TCract - Convertisseur de Coordonnées GNSS RTK</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0D492F 0%, #0D492F 50%, #91C57F 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0D492F 0%, #1a5c3f 100%);
+            padding: 50px 40px;
+            text-align: center;
+        }
+
+        .logo {
+            max-width: 500px;
+            width: 100%;
+            height: auto;
+            margin-bottom: 30px;
+        }
+
+        .tagline {
+            color: white;
+            font-size: 22px;
+            font-weight: 300;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #b8daa8;
+            font-size: 16px;
+            font-weight: 400;
+        }
+
+        .content {
+            padding: 50px 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            color: #0D492F;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .section-title::before {
+            content: "";
+            width: 5px;
+            height: 30px;
+            background: linear-gradient(135deg, #0D492F 0%, #91C57F 100%);
+            margin-right: 15px;
+            border-radius: 3px;
+        }
+
+        .description {
+            color: #4a5568;
+            font-size: 16px;
+            line-height: 1.8;
+            margin-bottom: 15px;
+        }
+
+        .contact-box {
+            background: linear-gradient(135deg, rgba(13, 73, 47, 0.05) 0%, rgba(145, 197, 127, 0.05) 100%);
+            border: 2px solid #91C57F;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+
+        .contact-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .contact-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #0D492F 0%, #91C57F 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .contact-link {
+            color: #0D492F;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .contact-link:hover {
+            color: #91C57F;
+            text-decoration: underline;
+        }
+
+        .disclaimer {
+            background: #fff9e6;
+            border-left: 4px solid #f6ad55;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+
+        .disclaimer-title {
+            color: #744210;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .disclaimer-text {
+            color: #744210;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        .btn-access {
+            background: linear-gradient(135deg, #0D492F 0%, #91C57F 100%);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(13, 73, 47, 0.4);
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-access:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(13, 73, 47, 0.5);
+        }
+
+        .footer {
+            background: #f7fafc;
+            padding: 25px 40px;
+            text-align: center;
+            color: #718096;
+            font-size: 13px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 40px 30px;
+            }
+
+            .content {
+                padding: 40px 30px;
+            }
+
+            .logo {
+                max-width: 100%;
+            }
+
+            .tagline {
+                font-size: 18px;
+            }
+
+            .section-title {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="{{ url_for('static', filename='tcract_logo.png') }}" alt="TCract Logo" class="logo">
+            <p class="tagline">Convertisseur de Coordonnées GNSS RTK</p>
+            <p class="subtitle">Solution professionnelle pour la conversion entre systèmes de référence</p>
+        </div>
+
+        <div class="content">
+            <div class="section">
+                <h2 class="section-title">À propos de cet outil</h2>
+                <p class="description">
+                    Cet outil de conversion de coordonnées GNSS RTK a été développé pour faciliter les transformations entre différents systèmes de référence géodésiques. Il supporte plus de 60 systèmes EPSG couvrant la France métropolitaine, les DOM-TOM et l'Europe, avec prise en charge des géoïdes IGN (RAF20, RAF18, etc.).
+                </p>
+                <p class="description">
+                    L'application permet de convertir des fichiers CSV contenant des coordonnées géographiques ou projetées, avec validation automatique de compatibilité et détection intelligente des systèmes sources.
+                </p>
+                <div style="background: linear-gradient(135deg, rgba(13, 73, 47, 0.08) 0%, rgba(145, 197, 127, 0.08) 100%); border-left: 4px solid #91C57F; padding: 15px 20px; border-radius: 8px; margin-top: 20px;">
+                    <p class="description" style="margin: 0; font-weight: 500; color: #0D492F;">
+                        💡 <strong>Besoin d'un système EPSG spécifique ?</strong> Je peux ajouter de nouveaux systèmes de coordonnées sur demande. N'hésitez pas à me contacter pour discuter de vos besoins.
+                    </p>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">Contact</h2>
+                <div class="contact-box">
+                    <div class="contact-item">
+                        <div class="contact-icon">🌐</div>
+                        <a href="https://www.tcract.fr" target="_blank" class="contact-link">www.tcract.fr</a>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-icon">✉️</div>
+                        <a href="mailto:arnaud.ollivier@tcract.fr" class="contact-link">arnaud.ollivier@tcract.fr</a>
+                    </div>
+                </div>
+            </div>
+
+            <a href="/converter" class="btn-access">🚀 Accéder au convertisseur</a>
+
+            <div class="disclaimer">
+                <div class="disclaimer-title">⚠️ Avertissement et responsabilité</div>
+                <div class="disclaimer-text">
+                    <p style="margin-bottom: 10px;">
+                        <strong>Outil à titre indicatif :</strong> Cet outil de conversion utilise les bibliothèques PROJ et pyproj pour effectuer les transformations de coordonnées. Bien que ces outils soient reconnus et utilisés dans le secteur géomatique, les résultats fournis le sont à titre indicatif.
+                    </p>
+                    <p style="margin-bottom: 10px;">
+                        <strong>Validation requise :</strong> Il est de la responsabilité de l'utilisateur de valider les résultats obtenus avec des outils professionnels et certifiés avant toute utilisation opérationnelle, notamment pour des projets d'ingénierie, de construction ou de géomètre-expert.
+                    </p>
+                    <p style="margin-bottom: 10px;">
+                        <strong>Limitation de responsabilité :</strong> TCract et le développeur de cet outil ne peuvent être tenus responsables de toute erreur, imprécision ou dommage résultant de l'utilisation des coordonnées converties. L'utilisateur reconnaît utiliser cet outil en pleine connaissance de cause.
+                    </p>
+                    <p>
+                        <strong>Recommandation :</strong> Pour une utilisation professionnelle, nous recommandons de vérifier les résultats avec des outils certifiés tels que CIRCÉ (IGN) ou d'autres logiciels de conversion géodésique professionnels.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            © 2025 TCract - Tous droits réservés | Développé avec PROJ & pyproj
+        </div>
+    </div>
+</body>
+</html>
