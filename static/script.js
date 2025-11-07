@@ -54,6 +54,310 @@ fileInput.addEventListener('change', (e) => {
     }
 });
 
+// 🆕 ÉCOUTEUR sur changement de format - UTILISER DELEGATION D'ÉVÉNEMENTS
+document.addEventListener('change', (e) => {
+    if (e.target && e.target.name === 'coordFormat' && fileAnalysis) {
+        console.log('🔄 Changement de format détecté');
+        recalculateFromFormatChange();
+    }
+});
+
+// 🆕 FONCTION : Recalculer quand l'utilisateur change le format manuellement
+async function recalculateFromFormatChange() {
+    const selectedFormat = document.querySelector('input[name="coordFormat"]:checked').value;
+    
+    console.log('🔄 Recalcul après changement de format:', selectedFormat);
+    console.log('📊 Données preview disponibles:', fileAnalysis.preview);
+    
+    // Mettre à jour le format dans fileAnalysis
+    fileAnalysis.format_detected = selectedFormat;
+    
+    // 🆕 RAFRAÎCHIR L'APERÇU avec les nouveaux en-têtes
+    updatePreviewHeaders(selectedFormat);
+    
+    // Recalculer les coordonnées selon le nouveau format
+    if (fileAnalysis.preview && fileAnalysis.preview.length > 0) {
+        try {
+            let lat, lon;
+            
+            if (selectedFormat === 'lat_long_h') {
+                lat = parseFloat(fileAnalysis.preview[0][1]);
+                lon = parseFloat(fileAnalysis.preview[0][2]);
+                console.log(`➡️ Format Lat/Long: lat=${lat}, lon=${lon}`);
+            } else if (selectedFormat === 'long_lat_h') {
+                lon = parseFloat(fileAnalysis.preview[0][1]);
+                lat = parseFloat(fileAnalysis.preview[0][2]);
+                console.log(`➡️ Format Long/Lat: lon=${lon}, lat=${lat}`);
+            } else {
+                // Format projeté - on ne peut pas recalculer automatiquement
+                console.log('⚠️ Format projeté - pas de recalcul automatique');
+                
+                // Réinitialiser la validation si elle était faite
+                if (isSourceValidated) {
+                    resetSourceValidation();
+                    document.getElementById('detectionInfoSource').innerHTML = `
+                        <div class="info-badge warning" style="margin-bottom: 15px;">
+                            ⚠️ Format changé en coordonnées projetées - Veuillez valider à nouveau le système source
+                        </div>
+                    `;
+                }
+                
+                // Masquer les étapes suivantes si validation était active
+                document.getElementById('step3').style.display = 'none';
+                document.getElementById('step4').style.display = 'none';
+                document.getElementById('step5').style.display = 'none';
+                
+                // Afficher les contrôles pour coordonnées projetées
+                document.getElementById('validateSourceContainer').style.display = 'block';
+                document.getElementById('autoDetectContainer').style.display = regionSource.value ? 'block' : 'none';
+                
+                // Déverrouiller région et changer les options
+                regionSource.disabled = false;
+                const currentRegion = regionSource.value;
+                if (currentRegion) {
+                    populateEpsgForRegion(sourceEpsg, currentRegion, [], 'projected');
+                }
+                
+                return;
+            }
+            
+            // Vérifier que lat/lon sont valides
+            if (isNaN(lat) || isNaN(lon)) {
+                console.error('❌ Coordonnées invalides:', lat, lon);
+                showError('Impossible de recalculer : coordonnées invalides');
+                return;
+            }
+            
+            // Mettre à jour les coordonnées
+            fileAnalysis.coordinates = { lat, lon };
+            
+            // Recalculer la région
+            const detectedRegion = detectRegionFromCoords(lat, lon);
+            fileAnalysis.detected_region = detectedRegion;
+            
+            console.log(`✅ Nouvelles coordonnées: ${lat.toFixed(4)}, ${lon.toFixed(4)}`);
+            console.log(`✅ Région recalculée: ${detectedRegion}`);
+            
+            // Réinitialiser la validation
+            if (isSourceValidated) {
+                isSourceValidated = false;
+                validatedSourceEpsg = null;
+            }
+            
+            // Mettre à jour l'interface
+            populateRegionSelect(regionSource, detectedRegion);
+            populateRegionSelect(regionTarget, detectedRegion);
+            
+            // Verrouiller la région et auto-sélectionner le système source
+            regionSource.disabled = true;
+            
+            if (detectedRegion) {
+                // 🆕 Forcer le rechargement du système source
+                populateEpsgForRegion(sourceEpsg, detectedRegion, [], 'geographic');
+                
+                // Auto-sélectionner WGS84
+                sourceEpsg.value = '4326';
+                
+                document.getElementById('detectionInfoSource').innerHTML = `
+                    <div class="info-badge detected" style="margin-bottom: 15px;">
+                        📍 Région recalculée : ${detectedRegion} (${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E)
+                    </div>
+                `;
+                
+                document.getElementById('regionInfoSource').innerHTML = `
+                    <span class="info-badge detected" style="margin-top: 15px; display: inline-block;">
+                        ✨ Système détecté automatiquement après changement de format
+                    </span>
+                `;
+                
+                // Masquer les contrôles de validation pour coordonnées géographiques
+                document.getElementById('validateSourceContainer').style.display = 'none';
+                document.getElementById('autoDetectContainer').style.display = 'none';
+                
+                // Validation automatique pour coordonnées géographiques
+                isSourceValidated = true;
+                validatedSourceEpsg = '4326';
+                
+                // Afficher les étapes suivantes
+                setTimeout(() => {
+                    document.getElementById('step3').style.display = 'block';
+                    document.getElementById('step4').style.display = 'block';
+                    document.getElementById('step5').style.display = 'block';
+                }, 100);
+                
+                // 🆕 FORCER la mise à jour complète du système cible
+                // D'abord vider complètement
+                document.getElementById('suggestionInfoTarget').innerHTML = '';
+                document.getElementById('detectionInfoTarget').innerHTML = '';
+                targetEpsg.value = ''; // Réinitialiser la sélection
+                
+                // Puis repeupler la région target
+                populateRegionSelect(regionTarget, detectedRegion);
+                
+                // Repeupler les systèmes EPSG cibles
+                const compatibleSystems = getCompatibleSystemsForRegion(detectedRegion, lat, lon);
+                populateEpsgForRegion(targetEpsg, detectedRegion, compatibleSystems);
+                
+                // 🆕 TOUJOURS mettre à jour l'info de détection target
+                document.getElementById('detectionInfoTarget').innerHTML = `
+                    <div class="info-badge detected" style="margin-bottom: 15px;">
+                        📍 Région détectée : ${detectedRegion} (${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E)
+                    </div>
+                `;
+                
+                // 🆕 TOUJOURS recréer les suggestions pour le système cible
+                const suggestions = getSuggestedTargetEpsg(lat, lon);
+                console.log('📊 Suggestions générées:', suggestions);
+                
+                if (suggestions.length > 0) {
+                    let suggestionsHtml = '<div class="suggestion-box">';
+                    suggestionsHtml += '<div class="suggestion-title">Systèmes recommandés pour votre zone</div>';
+                    suggestionsHtml += '<div class="suggestion-buttons">';
+                    suggestions.forEach(([code, name, tag]) => {
+                        const isRecommended = tag === 'recommandé';
+                        suggestionsHtml += `<button class="btn-suggestion ${isRecommended ? 'recommended' : ''}" onclick="selectTargetEpsg('${code}')">EPSG:${code} - ${name}</button>`;
+                    });
+                    suggestionsHtml += '</div></div>';
+                    document.getElementById('suggestionInfoTarget').innerHTML = suggestionsHtml;
+                    console.log('✅ Suggestions injectées dans le DOM');
+                } else {
+                    // Vider les suggestions si aucune
+                    document.getElementById('suggestionInfoTarget').innerHTML = '';
+                    console.log('⚠️ Aucune suggestion disponible');
+                }
+                
+                console.log('✅ Système cible complètement réinitialisé et mis à jour');
+            }
+            
+        } catch (error) {
+            console.error('❌ Erreur recalcul:', error);
+            showError('Erreur lors du recalcul des coordonnées: ' + error.message);
+        }
+    }
+}
+
+// 🆕 FONCTION : Mettre à jour uniquement les en-têtes du tableau d'aperçu
+function updatePreviewHeaders(format) {
+    console.log('🔄 Mise à jour des en-têtes du tableau:', format);
+    
+    // Trouver le tableau dans previewContent
+    const table = document.querySelector('#previewContent .preview-table');
+    if (!table) {
+        console.warn('⚠️ Tableau d\'aperçu non trouvé');
+        return;
+    }
+    
+    // Mettre à jour les en-têtes
+    const thead = table.querySelector('thead tr');
+    if (thead) {
+        if (format === 'lat_long_h') {
+            thead.innerHTML = '<th>Matricule</th><th>Latitude</th><th>Longitude</th><th>h</th>';
+            console.log('✅ En-têtes mis à jour: Matricule | Latitude | Longitude | h');
+        } else if (format === 'long_lat_h') {
+            thead.innerHTML = '<th>Matricule</th><th>Longitude</th><th>Latitude</th><th>h</th>';
+            console.log('✅ En-têtes mis à jour: Matricule | Longitude | Latitude | h');
+        } else {
+            thead.innerHTML = '<th>Matricule</th><th>X</th><th>Y</th><th>Z</th>';
+            console.log('✅ En-têtes mis à jour: Matricule | X | Y | Z');
+        }
+    }
+}
+
+// 🆕 FONCTION : Obtenir systèmes compatibles pour une région (simplifié côté client)
+function getCompatibleSystemsForRegion(region, lat, lon) {
+    // Pour l'instant, retourner une liste vide pour afficher tous les systèmes
+    // Le filtrage détaillé se fait côté serveur avec la validation
+    return [];
+}
+
+// 🆕 FONCTION : Obtenir suggestions de systèmes cibles (logique côté client)
+function getSuggestedTargetEpsg(lat, lon) {
+    const suggestions = [];
+    
+    // France métropolitaine
+    if (lat >= 41 && lat <= 51 && lon >= -5 && lon <= 10) {
+        suggestions.push(['2154', 'Lambert 93', 'recommandé']);
+        suggestions.push(['3946', 'CC46 (Lyon/Rhône-Alpes)', '']);
+        suggestions.push(['3945', 'CC45 (Centre-Est)', '']);
+    }
+    
+    // Corse
+    if (lat >= 41 && lat <= 43 && lon >= 8 && lon <= 10) {
+        suggestions.push(['3950', 'CC50 (Corse)', 'recommandé']);
+    }
+    
+    // Guadeloupe
+    if (lat >= 15.8 && lat <= 16.5 && lon >= -61.9 && lon <= -61.0) {
+        suggestions.push(['2969', 'RGAF09 / UTM zone 20N', 'recommandé']);
+    }
+    
+    // Martinique
+    if (lat >= 14.3 && lat <= 14.9 && lon >= -61.3 && lon <= -60.7) {
+        suggestions.push(['2973', 'RGAF09 / UTM zone 20N', 'recommandé']);
+    }
+    
+    // Guyane
+    if (lat >= 2.1 && lat <= 5.8 && lon >= -54.6 && lon <= -51.6) {
+        suggestions.push(['2972', 'RGFG95 / UTM zone 22N', 'recommandé']);
+    }
+    
+    // Réunion
+    if (lat >= -21.4 && lat <= -20.9 && lon >= 55.2 && lon <= 55.8) {
+        suggestions.push(['2975', 'RGR92 / UTM zone 40S', 'recommandé']);
+    }
+    
+    return suggestions;
+}
+
+// 🆕 FONCTION : Détecter la région (côté client - approximatif)
+function detectRegionFromCoords(lat, lon) {
+    // France métropolitaine
+    if (lat >= 41 && lat <= 51 && lon >= -5 && lon <= 10) {
+        // Corse
+        if (lat >= 41 && lat <= 43 && lon >= 8 && lon <= 10) {
+            return "Corse";
+        }
+        return "France métropolitaine";
+    }
+    
+    // Guadeloupe
+    if (lat >= 15.8 && lat <= 16.5 && lon >= -61.9 && lon <= -61.0) {
+        return "Guadeloupe";
+    }
+    
+    // Martinique
+    if (lat >= 14.3 && lat <= 14.9 && lon >= -61.3 && lon <= -60.7) {
+        return "Martinique";
+    }
+    
+    // Guyane
+    if (lat >= 2.1 && lat <= 5.8 && lon >= -54.6 && lon <= -51.6) {
+        return "Guyane";
+    }
+    
+    // Réunion
+    if (lat >= -21.4 && lat <= -20.9 && lon >= 55.2 && lon <= 55.8) {
+        return "Réunion";
+    }
+    
+    // Mayotte
+    if (lat >= -13.0 && lat <= -12.6 && lon >= 45.0 && lon <= 45.3) {
+        return "Mayotte";
+    }
+    
+    // Suisse
+    if (lat >= 45.8 && lat <= 47.8 && lon >= 5.9 && lon <= 10.5) {
+        return "Suisse";
+    }
+    
+    // Belgique
+    if (lat >= 49.5 && lat <= 51.5 && lon >= 2.5 && lon <= 6.4) {
+        return "Belgique";
+    }
+    
+    return "International";
+}
+
 // Fonction pour peupler le sélecteur de région
 function populateRegionSelect(selectElement, detectedRegion = null) {
     selectElement.innerHTML = '<option value="">-- Sélectionner une région --</option>';
@@ -61,7 +365,7 @@ function populateRegionSelect(selectElement, detectedRegion = null) {
     if (detectedRegion && window.EPSG_DATABASE[detectedRegion]) {
         const option = document.createElement('option');
         option.value = detectedRegion;
-        option.textContent = `🔍 ${detectedRegion} (détecté)`;
+        option.textContent = `📍 ${detectedRegion} (détecté)`;
         option.selected = true;
         selectElement.appendChild(option);
     }
@@ -391,11 +695,20 @@ function displayFilePreview(data) {
     
     preview += '</tbody></table>';
     
+    // 🆕 BOUTON SUPPRIMER L'IMPORT
+    preview += `
+        <div style="margin-top: 20px; text-align: center;">
+            <button class="btn-reset" onclick="resetFileUpload()" type="button">
+                🗑️ Supprimer ce fichier et en charger un autre
+            </button>
+        </div>
+    `;
+    
     previewContent.innerHTML = preview;
     
     fileInfo.innerHTML = `
         <span class="info-badge detected">
-            ✔ ${data.row_count} points détectés
+            ✓ ${data.row_count} points détectés
         </span>
         <span class="info-badge detected">
             Séparateur: ${data.delimiter === ',' ? 'Virgule' : data.delimiter === ';' ? 'Point-virgule' : 'Tabulation'}
@@ -492,11 +805,90 @@ function displayFilePreview(data) {
     }
 }
 
+// 🆕 FONCTION : Réinitialiser complètement l'upload
+function resetFileUpload() {
+    console.log('🗑️ Demande de suppression du fichier...');
+    
+    const confirmDelete = window.confirm(
+        '🗑️ Supprimer le fichier chargé ?\n\n' +
+        'Cela va réinitialiser toute la conversion.\n\n' +
+        'Voulez-vous continuer ?'
+    );
+    
+    if (!confirmDelete) {
+        console.log('❌ Suppression annulée');
+        return;
+    }
+    
+    console.log('✅ Suppression confirmée - Réinitialisation...');
+    
+    // Réinitialiser variables
+    uploadedFile = null;
+    fileAnalysis = null;
+    convertedResults = null;
+    isSourceValidated = false;
+    validatedSourceEpsg = null;
+    
+    // Réinitialiser input file
+    fileInput.value = '';
+    
+    // 🆕 MASQUER COMPLÈTEMENT la preview box
+    const previewBox = document.getElementById('filePreview');
+    previewBox.classList.remove('show');
+    previewBox.style.display = 'none';
+    
+    // Vider le contenu
+    previewContent.innerHTML = '';
+    fileInfo.innerHTML = '';
+    formatSelector.style.display = 'none';
+    
+    // Masquer toutes les étapes
+    document.getElementById('step2').style.display = 'none';
+    document.getElementById('step3').style.display = 'none';
+    document.getElementById('step4').style.display = 'none';
+    document.getElementById('step5').style.display = 'none';
+    document.getElementById('stepResults').style.display = 'none';
+    
+    // Réinitialiser les contenus des étapes
+    document.getElementById('detectionInfoSource').innerHTML = '';
+    document.getElementById('regionInfoSource').innerHTML = '';
+    document.getElementById('detectionInfoTarget').innerHTML = '';
+    document.getElementById('regionInfoTarget').innerHTML = '';
+    document.getElementById('suggestionInfoTarget').innerHTML = '';
+    document.getElementById('geoidInfo').innerHTML = '';
+    document.getElementById('autoDetectContainer').style.display = 'none';
+    document.getElementById('validateSourceContainer').style.display = 'none';
+    
+    // Réinitialiser les sélecteurs
+    regionSource.disabled = false;
+    sourceEpsg.disabled = false;
+    regionSource.value = '';
+    sourceEpsg.innerHTML = '<option value="">-- Sélectionner d\'abord une région --</option>';
+    regionTarget.value = '';
+    targetEpsg.innerHTML = '<option value="">-- Sélectionner d\'abord une région --</option>';
+    geoidSelect.value = 'none';
+    
+    // Réinitialiser les boutons
+    btnConvert.disabled = false;
+    document.getElementById('progressBar').style.display = 'none';
+    
+    // Décocher tous les radios et recocher le premier
+    document.querySelectorAll('input[name="coordFormat"]').forEach(radio => {
+        radio.checked = false;
+    });
+    document.getElementById('formatLatLong').checked = true;
+    
+    // Scroll vers le haut
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    console.log('✅ Réinitialisation complète terminée');
+}
+
 function selectTargetEpsg(code) {
     targetEpsg.value = code;
     document.getElementById('regionInfoTarget').innerHTML = `
         <span class="info-badge detected" style="margin-top: 15px; display: inline-block;">
-            ✔ Système sélectionné depuis les recommandations
+            ✓ Système sélectionné depuis les recommandations
         </span>
     `;
 }
@@ -534,7 +926,7 @@ btnValidateSource.addEventListener('click', async () => {
             
             // Réactiver le bouton
             btnValidateSource.disabled = false;
-            btnValidateSource.textContent = '✔ Valider le système source';
+            btnValidateSource.textContent = '✓ Valider le système source';
             
             return;
         }
@@ -542,7 +934,7 @@ btnValidateSource.addEventListener('click', async () => {
         if (data.error) {
             showError(data.error);
             btnValidateSource.disabled = false;
-            btnValidateSource.textContent = '✔ Valider le système source';
+            btnValidateSource.textContent = '✓ Valider le système source';
             return;
         }
         
@@ -624,7 +1016,7 @@ btnValidateSource.addEventListener('click', async () => {
     } catch (error) {
         showError('Erreur lors de la validation: ' + error.message);
         btnValidateSource.disabled = false;
-        btnValidateSource.textContent = '✔ Valider le système source';
+        btnValidateSource.textContent = '✓ Valider le système source';
     }
 });
 
@@ -647,7 +1039,7 @@ geoidSelect.addEventListener('change', async () => {
         if (data.available) {
             document.getElementById('geoidInfo').innerHTML = `
                 <span class="info-badge detected">
-                    ✔ Géoïde ${geoid} installé et prêt
+                    ✓ Géoïde ${geoid} installé et prêt
                 </span>
             `;
         } else {
@@ -830,7 +1222,7 @@ function resetSourceValidation() {
     // Restaurer le bouton de validation
     document.getElementById('validateSourceContainer').innerHTML = `
         <button class="validate-button" id="btnValidateSource">
-            ✔ Valider le système source
+            ✓ Valider le système source
         </button>
     `;
     

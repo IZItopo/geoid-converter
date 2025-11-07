@@ -821,7 +821,7 @@ def convert_coordinates():
                     f"+proj=pipeline "
                     f"+step +proj=axisswap +order=2,1 "
                     f"+step +proj=unitconvert +xy_in=deg +xy_out=rad "
-                    f"+step +proj=vgridshift +grids={geoid_filename} +multiplier=1 "
+                    f"+step +proj=vgridshift +grids={geoid_filename} +multiplier=-1 "
                     f"+step +proj=unitconvert +xy_in=rad +xy_out=deg "
                     f"+step +proj=axisswap +order=2,1"
                 )
@@ -839,7 +839,7 @@ def convert_coordinates():
                         f"+proj=pipeline "
                         f"+step +proj=axisswap +order=2,1 "
                         f"+step +proj=unitconvert +xy_in=deg +xy_out=rad "
-                        f"+step +proj=vgridshift +grids={str(geoid_path.absolute())} +multiplier=1 "
+                        f"+step +proj=vgridshift +grids={str(geoid_path.absolute())} +multiplier=-1 "
                         f"+step +proj=unitconvert +xy_in=rad +xy_out=deg "
                         f"+step +proj=axisswap +order=2,1"
                     )
